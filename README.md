@@ -71,3 +71,5 @@ Non-interactive mode:
 **Uninstallation:**
 
 `rm -v /usr/local/bin/taningia-shell`
+
+`rm -rvf /opt/taningia-shell/`
