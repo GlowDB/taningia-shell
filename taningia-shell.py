@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 __author__ = 'Mahmoud Adel <mahmoud.adel2@gmail.com>'
-__version__ = 0.8
+__version__ = 0.9
 __license__ = "The MIT License (MIT)"
 
 import os
@@ -44,7 +44,7 @@ def firsttimeinit():
         open(hostgroupscfg, 'a').close()
         open(commandgroupscfg, 'a').close()
 
-def editfile(editor, rfile):
+def editfile(editor, rfile, usesudo=False):
     if len(hosts) > 1:
         hostsdict = dict()
         index = 1
@@ -68,12 +68,22 @@ def editfile(editor, rfile):
     filename = taningiashelltmpdir + '-%s' % rfile.replace('/', '-')
     fabric.env.host_string = host
     fabric.env.warn_only = True
-    fabric.get(rfile, filename)
+    if usesudo:
+        with fabric.hide('running', 'output'):
+            fabric.env.warn_only = False
+            fabric.sudo('cp %s /tmp/%s' % (rfile, sessionid))
+            with fabric.show('running', 'output'): fabric.get('/tmp/%s' % sessionid, filename)
+            fabric.sudo('rm /tmp/%s' % sessionid)
+    else:
+        fabric.get(rfile, filename)
     os.system('%s %s' % (editor, filename))
-    fabric.put(filename, rfile)
+    fabric.put(filename, rfile, use_sudo=usesudo)
     filemd5sum = hashlib.md5(open(filename).read()).hexdigest()
     shutil.copy(filename, taningiashelltmpdir + '/' + filemd5sum)
-    commands[len(commands) + 1] = (rfile, filemd5sum)
+    if usesudo:
+        commands[len(commands) + 1] = (rfile, filemd5sum, 'SUDO')
+    else:
+        commands[len(commands) + 1] = (rfile, filemd5sum)
 
 def savecmd(cmds):
     for key in cmds.keys():
@@ -95,7 +105,10 @@ def savecmd(cmds):
             if cmd == 'Unwanted':
                 continue
             elif type(cmd) == tuple:
-                f.writelines('  TSPUT:%s,%s\n' % cmd)
+                if len(cmd) == 3:
+                    f.writelines('  TSPUT:%s,%s,%s\n' % cmd)
+                else:
+                    f.writelines('  TSPUT:%s,%s\n' % cmd)
                 shutil.copy(taningiashelltmpdir + cmd[1], taningiashellvardir + cmd[1])
             else:
                 f.writelines('  %s\n' % cmd)
@@ -107,9 +120,6 @@ def savehosts(hosts):
         f.writelines('hosts = \n')
         for host in hosts:
             f.writelines('  %s\n' % host)
-
-def checkconflicts():
-    pass
 
 def checkhostgroups():
     config = ConfigParser.RawConfigParser()
@@ -136,7 +146,12 @@ def runcommandgroup(hosts):
                         if 'TSPUT' in cmd:
                             filedata = str(cmd.split(':')[1]).split(',')
                             with fabric.show('running', 'output'):
-                                fabric.put(taningiashellvardir + filedata[1], filedata[0])
+                                if len(filedata) == 3:
+                                    fabric.put(taningiashellvardir + filedata[1], filedata[0], use_sudo=True)
+                                else:
+                                    fabric.put(taningiashellvardir + filedata[1], filedata[0])
+                        elif cmd.startswith('sudo'):
+                            sudo(cmd)
                         else:
                             output = fabric.run(cmd)
                             print '''%sOutput from %s:%s
@@ -144,6 +159,24 @@ def runcommandgroup(hosts):
 ''' % (termcolors.MAGENTA, host, termcolors.END, output)
     else:
         print '%sNothing to do!%s' % (termcolors.RED, termcolors.END)
+
+def sudo(cmd):
+    fabric.env.warn_only = True
+    editcmd = cmd.replace('sudo', '')
+    if editcmd.startswith(' vim') or editcmd.startswith(' vi') or editcmd.startswith(' nano'):
+        editor = cmd.split()[1]
+        rfile = cmd.split()[len(cmd.split()) - 1]
+        editfile(editor, rfile, usesudo=True)
+    else:
+        commands[len(commands) + 1] = cmd
+        for host in hosts:
+            fabric.env.host_string = host
+            with fabric.hide('running', 'output'):
+                if len(cmd) != 0:
+                    output = fabric.sudo(cmd.replace('sudo', ''))
+                    print '''%sOutput from %s:%s
+%s
+''' % (termcolors.MAGENTA, host, termcolors.END, output)
 
 def connect(hosts):
     print '''
@@ -153,10 +186,12 @@ Type 'help' to get a list of Taningia Shell internal commands
     try:
         while True:
             cmd = raw_input('%staningia-shell@%s-hosts> %s' % (termcolors.GREEN, len(hosts), termcolors.END))
-            if 'vim' in cmd or 'vi' in cmd or 'nano' in cmd:
+            if cmd.startswith('vim') or cmd.startswith('vi') or cmd.startswith('nano'):
                 editor = cmd.split()[0]
                 rfile = cmd.split()[len(cmd.split()) - 1]
                 editfile(editor, rfile)
+            elif cmd.startswith('sudo'):
+                sudo(cmd)
             elif cmd == 'help':
                 print '''%s
                 run           Run a saved command-group
@@ -180,8 +215,8 @@ Type 'help' to get a list of Taningia Shell internal commands
                         fabric.env.host_string = host
                         with fabric.hide('running', 'output'): output = fabric.run(cmd)
                         print '''%sOutput from %s:%s
-        %s
-        ''' % (termcolors.MAGENTA, host, termcolors.END, output)
+%s
+''' % (termcolors.MAGENTA, host, termcolors.END, output)
     except KeyboardInterrupt:
         pass
     except EOFError:
