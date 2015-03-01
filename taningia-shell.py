@@ -248,6 +248,9 @@ def run(cmd, group=False):
 ''' % (termcolors.MAGENTA, host, termcolors.END, output)
 
 def main():
+    if os.getuid() != 0:
+        print 'User must be root!'
+        exit()
     firsttimeinit()
     checkhostgroups()
     if args['run'] != None:
