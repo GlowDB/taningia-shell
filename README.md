@@ -26,6 +26,10 @@ Interactive mode (default):
 
 `taningia-shell ubuntu@host1.example.com,root@host2.example.com`
 
+* You can specify another port than port 22 by entering the hosts that way:
+
+`taningia-shell host1.example.com:2222,ubuntu@host2.example.com:4422`
+
 * Now you are attached to 2 hosts with 1 prompt, type the commands you need:
 
 ```
