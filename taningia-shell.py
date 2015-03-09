@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 __author__ = 'Mahmoud Adel <mahmoud.adel2@gmail.com>'
-__version__ = 0.9
+__version__ = 1.1
 __license__ = "The MIT License (MIT)"
 
 import os
@@ -26,7 +26,8 @@ groupactions = rootgroup.add_mutually_exclusive_group()
 groupactions.add_argument('-r' ,'--run', metavar='', help='Command/Commands to run on the provided hosts "non-interactive"')
 groupactions.add_argument('-g', '--command-group', metavar='', help='Command-group to run on the provided hosts "non-interactive"')
 
-taningiashelldir = '/opt/taningia-shell'
+username = os.getenv('USER')
+taningiashelldir = '/home/%s/taningia-shell' % username
 taningiashelltmpdir = taningiashelldir + '/tmp/'
 taningiashellvardir = taningiashelldir + '/var/'
 args = vars(parser.parse_args())
@@ -79,7 +80,7 @@ def editfile(editor, rfile, usesudo=False):
     os.system('%s %s' % (editor, filename))
     fabric.put(filename, rfile, use_sudo=usesudo)
     filemd5sum = hashlib.md5(open(filename).read()).hexdigest()
-    shutil.copy(filename, taningiashelltmpdir + '/' + filemd5sum)
+    shutil.move(filename, taningiashelltmpdir + '/' + filemd5sum)
     if usesudo:
         commands[len(commands) + 1] = (rfile, filemd5sum, 'SUDO')
     else:
@@ -109,7 +110,7 @@ def savecmd(cmds):
                     f.writelines('  TSPUT:%s,%s,%s\n' % cmd)
                 else:
                     f.writelines('  TSPUT:%s,%s\n' % cmd)
-                shutil.copy(taningiashelltmpdir + cmd[1], taningiashellvardir + cmd[1])
+                shutil.move(taningiashelltmpdir + cmd[1], taningiashellvardir + cmd[1])
             else:
                 f.writelines('  %s\n' % cmd)
 
@@ -247,11 +248,13 @@ def run(cmd, group=False):
 %s
 ''' % (termcolors.MAGENTA, host, termcolors.END, output)
 
+def cleanup():
+    for tmpfile in os.listdir(taningiashelltmpdir):
+        os.remove(taningiashelltmpdir + tmpfile)
+
 def main():
-    if os.getuid() != 0:
-        print 'User must be root!'
-        exit()
     firsttimeinit()
+    cleanup()
     checkhostgroups()
     if args['run'] != None:
         run(args['run'])

@@ -1,12 +1,20 @@
 Taningia Shell
 ==============
-A super-user shell which allow controlling multiple hosts in a smart way (Prototype)
+A super-user shell which allow controlling multiple hosts in a smart way, no more annoying "Deploy on all servers" tasks!!
+All you need is:
+* Connect to a test server
+* Run the needed commands
+* Test your deployment
+* Save the commands
+
+Then spread on all your servers easily!!
 
 **Features:**
 
-* Easy to use interactive mode (default)
-* Easy CLI wizard to save command-groups/host-groups
-* Options to run commands/command-groups non-interactively (e.g compatible with crontab)
+* Easy to use
+* Portable taningia-shell dir (host-groups, command-groups, config files)
+* Easy CLI wizard to save or call command-groups/host-groups
+* Options to run commands/command-groups non-interactively (e.g. compatible with crontab)
 
 **Installation:**
 
