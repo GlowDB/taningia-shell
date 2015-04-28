@@ -10,6 +10,7 @@ import ConfigParser
 import fabric.api as fabric
 import shutil
 import hashlib
+import readline
 
 class termcolors:
     BLUE = '\033[94m'
@@ -34,6 +35,7 @@ args = vars(parser.parse_args())
 hosts = args['hosts'].split(',')
 sessionid = str(uuid.uuid4())[-6:]
 commands = dict()
+editors =  ('vi', 'vim', 'nano')
 hostgroupscfg = taningiashelldir + '/etc/' + 'hostgroups.cfg'
 commandgroupscfg = taningiashelldir + '/etc/' + 'commandgroups.cfg'
 
@@ -187,7 +189,7 @@ Type 'help' to get a list of Taningia Shell internal commands
     try:
         while True:
             cmd = raw_input('%staningia-shell@%s-hosts> %s' % (termcolors.GREEN, len(hosts), termcolors.END))
-            if cmd.startswith('vim') or cmd.startswith('vi') or cmd.startswith('nano'):
+            if cmd.split()[0] in editors:
                 editor = cmd.split()[0]
                 rfile = cmd.split()[len(cmd.split()) - 1]
                 editfile(editor, rfile)
