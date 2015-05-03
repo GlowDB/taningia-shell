@@ -27,8 +27,8 @@ groupactions = rootgroup.add_mutually_exclusive_group()
 groupactions.add_argument('-r' ,'--run', metavar='', help='Command/Commands to run on the provided hosts "non-interactive"')
 groupactions.add_argument('-g', '--command-group', metavar='', help='Command-group to run on the provided hosts "non-interactive"')
 
-username = os.getenv('USER')
-taningiashelldir = '/home/%s/taningia-shell' % username
+homedir = os.getenv('HOME')
+taningiashelldir = homedir
 taningiashelltmpdir = taningiashelldir + '/tmp/'
 taningiashellvardir = taningiashelldir + '/var/'
 args = vars(parser.parse_args())
