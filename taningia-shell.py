@@ -47,6 +47,15 @@ def firsttimeinit():
         open(hostgroupscfg, 'a').close()
         open(commandgroupscfg, 'a').close()
 
+def printoutput(host, cmd, output):
+    print '''{0}Command on {2}: {4}
+{1}Output from {2}:{3}
+{5}
+'''.format(termcolors.BLUE, termcolors.MAGENTA, host, termcolors.END, cmd, output)
+
+def nothingtodo():
+    print '%sNothing to do!%s' % (termcolors.RED, termcolors.END)
+
 def editfile(editor, rfile, usesudo=False):
     if len(hosts) > 1:
         hostsdict = dict()
@@ -61,10 +70,10 @@ def editfile(editor, rfile, usesudo=False):
             if hostkey in hostsdict.keys():
                 host = hostsdict[hostkey]
             else:
-                print '%sNothing to do!%s' % (termcolors.RED, termcolors.END)
+                nothingtodo()
                 return
         except:
-            print '%sNothing to do!%s' % (termcolors.RED, termcolors.END)
+            nothingtodo()
             return
     else:
         host = hosts[0]
@@ -99,7 +108,7 @@ def savecmd(cmds):
                 if int(unwanted) in cmds.keys():
                     cmds[int(unwanted)] = 'Unwanted'
             except:
-                print '%sNothing to do!%s' % (termcolors.RED, termcolors.END)
+                nothingtodo()
                 return
     with open(commandgroupscfg, 'a') as f:
         f.writelines('[%s]\n' % commandgroupname)
@@ -133,12 +142,15 @@ def checkhostgroups():
             for item in config.get(host, 'hosts').splitlines():
                 if len(item) != 0: hosts.append(item)
 
-def runcommandgroup(hosts):
+def runcommandgroup(hosts, interactive=True):
     config = ConfigParser.RawConfigParser()
     config.read(commandgroupscfg)
-    for section in config.sections():
-        print '%s%s%s' % (termcolors.YELLOW, section, termcolors.END)
-    cmdgroup = raw_input('%sPlease choose command group to run: %s' % (termcolors.BLUE, termcolors.END))
+    if interactive:
+        for section in config.sections():
+            print '%s%s%s' % (termcolors.YELLOW, section, termcolors.END)
+        cmdgroup = raw_input('%sPlease choose command group to run: %s' % (termcolors.BLUE, termcolors.END))
+    else:
+        cmdgroup = args['command_group']
     if cmdgroup in config.sections():
         for host in hosts:
             fabric.env.warn_only = True
@@ -157,11 +169,9 @@ def runcommandgroup(hosts):
                             sudo(cmd)
                         else:
                             output = fabric.run(cmd)
-                            print '''%sOutput from %s:%s
-%s
-''' % (termcolors.MAGENTA, host, termcolors.END, output)
+                            printoutput(host, cmd, output)
     else:
-        print '%sNothing to do!%s' % (termcolors.RED, termcolors.END)
+        nothingtodo()
 
 def sudo(cmd):
     fabric.env.warn_only = True
@@ -177,9 +187,7 @@ def sudo(cmd):
             with fabric.hide('running', 'output'):
                 if len(cmd) != 0:
                     output = fabric.sudo(cmd.replace('sudo', ''))
-                    print '''%sOutput from %s:%s
-%s
-''' % (termcolors.MAGENTA, host, termcolors.END, output)
+                    printoutput(host, cmd, output)
 
 def connect(hosts):
     print '''
@@ -209,7 +217,7 @@ Type 'help' to get a list of Taningia Shell internal commands
                 elif choice == '2':
                     savehosts(hosts)
                 else:
-                    print '%sNothing to do!%s' % (termcolors.RED, termcolors.END)
+                    nothingtodo()
             else:
                 if len(cmd) != 0:
                     commands[len(commands) + 1] = cmd
@@ -217,9 +225,7 @@ Type 'help' to get a list of Taningia Shell internal commands
                         fabric.env.warn_only = True
                         fabric.env.host_string = host
                         with fabric.hide('running', 'output'): output = fabric.run(cmd)
-                        print '''%sOutput from %s:%s
-%s
-''' % (termcolors.MAGENTA, host, termcolors.END, output)
+                        printoutput(host, cmd, output)
     except KeyboardInterrupt:
         pass
     except EOFError:
@@ -231,24 +237,15 @@ def run(cmd, group=False):
         config.read(commandgroupscfg)
         cmdgroup = cmd
         if cmdgroup in config.sections():
-            for host in hosts:
-                fabric.env.warn_only = True
-                fabric.env.host_string = host
-                with fabric.hide('running', 'output'):
-                    for cmd in config.get(cmdgroup, 'commands').splitlines():
-                        if len(cmd) != 0:
-                            output = fabric.run(cmd)
-                            print '''%sOutput from %s:%s
-%s
-''' % (termcolors.MAGENTA, host, termcolors.END, output)
+            runcommandgroup(hosts, interactive=False)
+        else:
+            nothingtodo()
     else:
         for host in hosts:
             fabric.env.warn_only = True
             fabric.env.host_string = host
             with fabric.hide('running', 'output'): output = fabric.run(cmd)
-            print '''%sOutput from %s:%s
-%s
-''' % (termcolors.MAGENTA, host, termcolors.END, output)
+            printoutput(host, cmd, output)
 
 def cleanup():
     for tmpfile in os.listdir(taningiashelltmpdir):
