@@ -8,6 +8,7 @@ All you need is:
 * Save the commands
 
 Then spread on all your servers easily!!
+Expert? OK, just connect to the server group, run your commands, and you're done!
 
 **Features:**
 
@@ -15,6 +16,7 @@ Then spread on all your servers easily!!
 * Portable taningia-shell dir (host-groups, command-groups, config files)
 * Easy CLI wizard to save or call command-groups/host-groups
 * Options to run commands/command-groups non-interactively (e.g. compatible with crontab)
+* SSH keys are optional but highly recommended, but you've to use keys if you'll run in non-interactive mode (e.g. crontab)
 
 **Installation:**
 
@@ -76,12 +78,12 @@ Non-interactive mode:
 
 **Configuration files:**
 
-* /opt/taningia-shell/etc/commandgroups.cfg
+* $HOME/taningia-shell/etc/commandgroups.cfg
 
-* /opt/taningia-shell/etc/hostgroups.cfg
+* $HOME/taningia-shell/etc/hostgroups.cfg
 
 **Uninstallation:**
 
 `rm -v /usr/local/bin/taningia-shell`
 
-`rm -rvf /opt/taningia-shell/`
+`rm -rvf $HOME/taningia-shell/`
