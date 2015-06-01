@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 __author__ = 'Mahmoud Adel <mahmoud.adel2@gmail.com>'
-__version__ = 1.1
+__version__ = 2.0
 __license__ = "The MIT License (MIT)"
 
 import os
@@ -8,6 +8,7 @@ import argparse
 import uuid
 import ConfigParser
 import fabric.api as fabric
+import fabric.exceptions as fabexceptions
 import shutil
 import hashlib
 import readline
@@ -56,46 +57,63 @@ def printoutput(host, cmd, output):
 def nothingtodo():
     print '%sNothing to do!%s' % (termcolors.RED, termcolors.END)
 
+def networkexception(*args):
+    if len(args) == 1:
+        print '''%s
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+WARNING: Network issue occurred on: %s!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%s''' % (termcolors.RED, args[0], termcolors.END)
+    else:
+        print '''%s
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+WARNING: Network issue occurred!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%s''' % (termcolors.RED, termcolors.END)
+
 def editfile(editor, rfile, usesudo=False):
-    if len(hosts) > 1:
-        hostsdict = dict()
-        index = 1
-        for host in hosts:
-            hostsdict[index] = host
-            index += 1
-        for key in hostsdict.keys():
-            print '%s%s) %s%s' % (termcolors.YELLOW, str(key), hostsdict[key], termcolors.END)
-        try:
-            hostkey = int(raw_input('%sPlease insert the host to perform the edit action: %s' % (termcolors.BLUE, termcolors.END)))
-            if hostkey in hostsdict.keys():
-                host = hostsdict[hostkey]
-            else:
+    try:
+        if len(hosts) > 1:
+            hostsdict = dict()
+            index = 1
+            for host in hosts:
+                hostsdict[index] = host
+                index += 1
+            for key in hostsdict.keys():
+                print '%s%s) %s%s' % (termcolors.YELLOW, str(key), hostsdict[key], termcolors.END)
+            try:
+                hostkey = int(raw_input('%sPlease insert the host to perform the edit action: %s' % (termcolors.BLUE, termcolors.END)))
+                if hostkey in hostsdict.keys():
+                    host = hostsdict[hostkey]
+                else:
+                    nothingtodo()
+                    return
+            except:
                 nothingtodo()
                 return
-        except:
-            nothingtodo()
-            return
-    else:
-        host = hosts[0]
-    filename = taningiashelltmpdir + '-%s' % rfile.replace('/', '-')
-    fabric.env.host_string = host
-    fabric.env.warn_only = True
-    if usesudo:
-        with fabric.hide('running', 'output'):
-            fabric.env.warn_only = False
-            fabric.sudo('cp %s /tmp/%s' % (rfile, sessionid))
-            with fabric.show('running', 'output'): fabric.get('/tmp/%s' % sessionid, filename)
-            fabric.sudo('rm /tmp/%s' % sessionid)
-    else:
-        fabric.get(rfile, filename)
-    os.system('%s %s' % (editor, filename))
-    fabric.put(filename, rfile, use_sudo=usesudo)
-    filemd5sum = hashlib.md5(open(filename).read()).hexdigest()
-    shutil.move(filename, taningiashelltmpdir + '/' + filemd5sum)
-    if usesudo:
-        commands[len(commands) + 1] = (rfile, filemd5sum, 'SUDO')
-    else:
-        commands[len(commands) + 1] = (rfile, filemd5sum)
+        else:
+            host = hosts[0]
+        filename = taningiashelltmpdir + '-%s' % rfile.replace('/', '-')
+        fabric.env.host_string = host
+        fabric.env.warn_only = True
+        if usesudo:
+            with fabric.hide('running', 'output'):
+                fabric.env.warn_only = False
+                fabric.sudo('cp %s /tmp/%s' % (rfile, sessionid))
+                with fabric.show('running', 'output'): fabric.get('/tmp/%s' % sessionid, filename)
+                fabric.sudo('rm /tmp/%s' % sessionid)
+        else:
+            fabric.get(rfile, filename)
+        os.system('%s %s' % (editor, filename))
+        fabric.put(filename, rfile, use_sudo=usesudo)
+        filemd5sum = hashlib.md5(open(filename).read()).hexdigest()
+        shutil.move(filename, taningiashelltmpdir + '/' + filemd5sum)
+        if usesudo:
+            commands[len(commands) + 1] = (rfile, filemd5sum, 'SUDO')
+        else:
+            commands[len(commands) + 1] = (rfile, filemd5sum)
+    except fabexceptions.NetworkError:
+        networkexception()
 
 def savecmd(cmds):
     for key in cmds.keys():
@@ -155,28 +173,31 @@ def runcommandgroup(hosts, interactive=True):
         for host in hosts:
             fabric.env.warn_only = True
             fabric.env.host_string = host
-            with fabric.hide('running', 'output'):
-                for cmd in config.get(cmdgroup, 'commands').splitlines():
-                    if len(cmd) != 0:
-                        if 'TSPUT' in cmd:
-                            filedata = str(cmd.split(':')[1]).split(',')
-                            with fabric.show('running', 'output'):
-                                if len(filedata) == 3:
-                                    fabric.put(taningiashellvardir + filedata[1], filedata[0], use_sudo=True)
-                                else:
-                                    fabric.put(taningiashellvardir + filedata[1], filedata[0])
-                        elif cmd.startswith('sudo'):
-                            sudo(cmd)
-                        else:
-                            output = fabric.run(cmd)
-                            printoutput(host, cmd, output)
+            try:
+                with fabric.hide('running', 'output'):
+                    for cmd in config.get(cmdgroup, 'commands').splitlines():
+                        if len(cmd) != 0:
+                            if 'TSPUT' in cmd:
+                                filedata = str(cmd.split(':')[1]).split(',')
+                                with fabric.show('running', 'output'):
+                                    if len(filedata) == 3:
+                                        fabric.put(taningiashellvardir + filedata[1], filedata[0], use_sudo=True)
+                                    else:
+                                        fabric.put(taningiashellvardir + filedata[1], filedata[0])
+                            elif cmd.startswith('sudo'):
+                                sudo(cmd)
+                            else:
+                                output = fabric.run(cmd)
+                                printoutput(host, cmd, output)
+            except fabexceptions.NetworkError:
+                networkexception(host)
     else:
         nothingtodo()
 
 def sudo(cmd):
     fabric.env.warn_only = True
     editcmd = cmd.replace('sudo', '')
-    if editcmd.startswith(' vim') or editcmd.startswith(' vi') or editcmd.startswith(' nano'):
+    if cmd.split()[1] in editors:
         editor = cmd.split()[1]
         rfile = cmd.split()[len(cmd.split()) - 1]
         editfile(editor, rfile, usesudo=True)
@@ -184,10 +205,13 @@ def sudo(cmd):
         commands[len(commands) + 1] = cmd
         for host in hosts:
             fabric.env.host_string = host
-            with fabric.hide('running', 'output'):
-                if len(cmd) != 0:
-                    output = fabric.sudo(cmd.replace('sudo', ''))
-                    printoutput(host, cmd, output)
+            try:
+                with fabric.hide('running', 'output'):
+                    if len(cmd) != 0:
+                        output = fabric.sudo(cmd.replace('sudo', ''))
+                        printoutput(host, cmd, output)
+            except fabexceptions.NetworkError:
+                networkexception(host)
 
 def connect(hosts):
     print '''
@@ -197,7 +221,7 @@ Type 'help' to get a list of Taningia Shell internal commands
     try:
         while True:
             cmd = raw_input('%staningia-shell@%s-hosts> %s' % (termcolors.GREEN, len(hosts), termcolors.END))
-            if cmd.split()[0] in editors:
+            if len(cmd) !=0 and cmd.split()[0] in editors:
                 editor = cmd.split()[0]
                 rfile = cmd.split()[len(cmd.split()) - 1]
                 editfile(editor, rfile)
@@ -224,11 +248,16 @@ Type 'help' to get a list of Taningia Shell internal commands
                     for host in hosts:
                         fabric.env.warn_only = True
                         fabric.env.host_string = host
-                        with fabric.hide('running', 'output'): output = fabric.run(cmd)
-                        printoutput(host, cmd, output)
+                        try:
+                            with fabric.hide('running', 'output'): output = fabric.run(cmd)
+                            printoutput(host, cmd, output)
+                        except fabexceptions.NetworkError:
+                            networkexception(host)
     except KeyboardInterrupt:
+        print
         pass
     except EOFError:
+        print
         pass
 
 def run(cmd, group=False):
@@ -244,8 +273,11 @@ def run(cmd, group=False):
         for host in hosts:
             fabric.env.warn_only = True
             fabric.env.host_string = host
-            with fabric.hide('running', 'output'): output = fabric.run(cmd)
-            printoutput(host, cmd, output)
+            try:
+                with fabric.hide('running', 'output'): output = fabric.run(cmd)
+                printoutput(host, cmd, output)
+            except fabexceptions.NetworkError:
+                networkexception(host)
 
 def cleanup():
     for tmpfile in os.listdir(taningiashelltmpdir):
