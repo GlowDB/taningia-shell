@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 __author__ = 'Mahmoud Adel <mahmoud.adel2@gmail.com>'
-__version__ = 2.0
+__version__ = 2.1
 __license__ = "The MIT License (MIT)"
 
 import os
@@ -82,7 +82,7 @@ def editfile(editor, rfile, usesudo=False):
             for key in hostsdict.keys():
                 print '%s%s) %s%s' % (termcolors.YELLOW, str(key), hostsdict[key], termcolors.END)
             try:
-                hostkey = int(raw_input('%sPlease insert the host to perform the edit action: %s' % (termcolors.BLUE, termcolors.END)))
+                hostkey = int(raw_input('%sPlease choose the host to perform the edit action: %s' % (termcolors.BLUE, termcolors.END)))
                 if hostkey in hostsdict.keys():
                     host = hostsdict[hostkey]
                 else:
@@ -105,13 +105,29 @@ def editfile(editor, rfile, usesudo=False):
         else:
             fabric.get(rfile, filename)
         os.system('%s %s' % (editor, filename))
-        fabric.put(filename, rfile, use_sudo=usesudo)
-        filemd5sum = hashlib.md5(open(filename).read()).hexdigest()
-        shutil.move(filename, taningiashelltmpdir + '/' + filemd5sum)
-        if usesudo:
-            commands[len(commands) + 1] = (rfile, filemd5sum, 'SUDO')
-        else:
-            commands[len(commands) + 1] = (rfile, filemd5sum)
+        print '''%s1) Push the file to all %s hosts.
+2) Push the file to the host you choosed only.
+3) Do nothing.
+        %s''' % (termcolors.YELLOW, len(hosts), termcolors.END)
+        try:
+            editaction = int(raw_input('%sPlease choose the action you want to do for %s: %s' % (termcolors.BLUE, rfile, termcolors.END)))
+            if editaction == 1:
+                for host in hosts:
+                    fabric.env.host_string = host
+                    fabric.env.warn_only = True
+                    fabric.put(filename, rfile, use_sudo=usesudo)
+            elif editaction == 2:
+                fabric.put(filename, rfile, use_sudo=usesudo)
+            else:
+                nothingtodo()
+            filemd5sum = hashlib.md5(open(filename).read()).hexdigest()
+            shutil.move(filename, taningiashelltmpdir + '/' + filemd5sum)
+            if usesudo:
+                commands[len(commands) + 1] = (rfile, filemd5sum, 'SUDO')
+            else:
+                commands[len(commands) + 1] = (rfile, filemd5sum)
+        except:
+            nothingtodo()
     except fabexceptions.NetworkError:
         networkexception()
 
