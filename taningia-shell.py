@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 __author__ = 'Mahmoud Adel <mahmoud.adel2@gmail.com>'
-__version__ = 2.1
+__version__ = 2.3
 __license__ = "The MIT License (MIT)"
 
 import os
@@ -98,7 +98,6 @@ def editfile(editor, rfile, usesudo=False):
         fabric.env.warn_only = True
         if usesudo:
             with fabric.hide('running', 'output'):
-                fabric.env.warn_only = False
                 fabric.sudo('cp %s /tmp/%s' % (rfile, sessionid))
                 with fabric.show('running', 'output'): fabric.get('/tmp/%s' % sessionid, filename)
                 fabric.sudo('rm /tmp/%s' % sessionid)
@@ -200,7 +199,7 @@ def runcommandgroup(hosts, interactive=True):
                                         fabric.put(taningiashellvardir + filedata[1], filedata[0], use_sudo=True)
                                     else:
                                         fabric.put(taningiashellvardir + filedata[1], filedata[0])
-                            elif cmd.startswith('sudo'):
+                            elif cmd.split()[0] == 'sudo':
                                 sudo(cmd)
                             else:
                                 output = fabric.run(cmd)
@@ -212,7 +211,6 @@ def runcommandgroup(hosts, interactive=True):
 
 def sudo(cmd):
     fabric.env.warn_only = True
-    editcmd = cmd.replace('sudo', '')
     if cmd.split()[1] in editors:
         editor = cmd.split()[1]
         rfile = cmd.split()[len(cmd.split()) - 1]
@@ -241,7 +239,7 @@ Type 'help' to get a list of Taningia Shell internal commands
                 editor = cmd.split()[0]
                 rfile = cmd.split()[len(cmd.split()) - 1]
                 editfile(editor, rfile)
-            elif cmd.startswith('sudo'):
+            elif len(cmd) !=0 and cmd.split()[0] == 'sudo':
                 sudo(cmd)
             elif cmd == 'help':
                 print '''%s
@@ -290,7 +288,10 @@ def run(cmd, group=False):
             fabric.env.warn_only = True
             fabric.env.host_string = host
             try:
-                with fabric.hide('running', 'output'): output = fabric.run(cmd)
+                if cmd.split()[0] == 'sudo':
+                    with fabric.hide('running', 'output'): output = fabric.sudo(cmd)
+                else:
+                    with fabric.hide('running', 'output'): output = fabric.run(cmd)
                 printoutput(host, cmd, output)
             except fabexceptions.NetworkError:
                 networkexception(host)
