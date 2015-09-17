@@ -20,6 +20,8 @@ Expert? OK, just connect to the server group, run your commands, and you're done
 
 **Installation:**
 
+`apt-get install fabric`
+
 `wget https://raw.githubusercontent.com/mahmoudadel2/taningia-shell/master/taningia-shell.py -O /usr/local/bin/taningia-shell`
 
 `chmod +x /usr/local/bin/taningia-shell`
