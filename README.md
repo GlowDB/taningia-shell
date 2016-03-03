@@ -5,10 +5,10 @@ All you need is:
 * Connect to a test server
 * Run the needed commands
 * Test your deployment
-* Save the commands
+* Save the commands and the edited configuration files.
 
 Then spread on all your servers easily!!
-Expert? OK, just connect to the server group, run your commands, and you're done!
+Expert? OK, just connect to the server group, run your commands, edit your configurations, and you're done!
 
 **Features:**
 
